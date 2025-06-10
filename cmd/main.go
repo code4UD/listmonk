@@ -21,6 +21,7 @@ import (
 	"github.com/knadh/listmonk/internal/captcha"
 	"github.com/knadh/listmonk/internal/core"
 	"github.com/knadh/listmonk/internal/events"
+	"github.com/knadh/listmonk/internal/geo"
 	"github.com/knadh/listmonk/internal/i18n"
 	"github.com/knadh/listmonk/internal/manager"
 	"github.com/knadh/listmonk/internal/media"
@@ -48,6 +49,7 @@ type App struct {
 	bounce     *bounce.Manager
 	captcha    *captcha.Captcha
 	i18n       *i18n.I18n
+	geoSvc     *geo.Service
 	pg         *paginator.Paginator
 	events     *events.Events
 	log        *log.Logger
@@ -198,6 +200,9 @@ func main() {
 		// Initialize the auth manager.
 		hasUsers, auth = initAuth(core, db.DB, ko)
 
+		// Initialize the geographic service.
+		geoSvc = geo.NewService(db)
+
 		// Initialize the webhook/POP3 bounce processor.
 		bounce *bounce.Manager
 
@@ -258,6 +263,7 @@ func main() {
 		bounce:     bounce,
 		captcha:    initCaptcha(),
 		i18n:       i18n,
+		geoSvc:     geoSvc,
 		log:        lo,
 		events:     evStream,
 		bufLog:     bufLog,

@@ -1,0 +1,96 @@
+# Multi-stage Dockerfile optimisé pour listmonk-mairies
+
+# Stage 1: Build frontend
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+# Copy package files
+COPY frontend/package*.json ./
+COPY frontend/yarn.lock ./
+
+# Install dependencies
+RUN yarn install --frozen-lockfile --production=false
+
+# Copy frontend source
+COPY frontend/ ./
+
+# Build frontend
+RUN yarn build
+
+# Stage 2: Build backend
+FROM golang:1.24-alpine AS backend-builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Copy built frontend from previous stage
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w -X main.buildString=$(date -u +%Y%m%d.%H%M%S) -X main.versionString=mairies-v1.0.0" \
+    -o listmonk ./cmd
+
+# Stage 3: Production image
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk --no-cache add \
+    ca-certificates \
+    tzdata \
+    shadow \
+    su-exec \
+    curl \
+    postgresql-client
+
+# Create listmonk user
+RUN addgroup -g 1001 listmonk && \
+    adduser -D -u 1001 -G listmonk listmonk
+
+# Set working directory
+WORKDIR /listmonk
+
+# Copy binary and configuration files
+COPY --from=backend-builder /app/listmonk .
+COPY --from=backend-builder /app/config.toml.sample .
+COPY --from=backend-builder /app/queries.sql .
+COPY --from=backend-builder /app/schema.sql .
+COPY --from=backend-builder /app/migrations/ ./migrations/
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Create directories for uploads and data
+RUN mkdir -p /listmonk/uploads /listmonk/data && \
+    chown -R listmonk:listmonk /listmonk
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:9000/api/health || exit 1
+
+# Expose port
+EXPOSE 9000
+
+# Set entrypoint
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+# Default command
+CMD ["./listmonk"]
+
+# Labels
+LABEL maintainer="code4UD <contact@code4ud.fr>"
+LABEL description="Listmonk newsletter manager adapted for French municipalities"
+LABEL version="mairies-v1.0.0"
