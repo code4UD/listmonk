@@ -272,9 +272,9 @@ func (a *App) ValidateCSV(c echo.Context) error {
 	}
 	defer src.Close()
 	
-	csvImporter := importer.NewCSVImporter(a.db, a.geoSvc, a.log.Printf)
+	csvImporter := importer.NewCSVImporter(a.db.DB, a.geoSvc, a.log.Printf)
 	
-	result, err := csvImporter.ValidateCSVFormat(src)
+	result, err := csvImporter.ValidateCSV(src)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, 
 			fmt.Sprintf("Error validating CSV: %v", err))
@@ -285,7 +285,7 @@ func (a *App) ValidateCSV(c echo.Context) error {
 
 // GetCSVTemplate returns a CSV template for importing municipality data
 func (a *App) GetCSVTemplate(c echo.Context) error {
-	csvImporter := importer.NewCSVImporter(a.db, a.geoSvc, a.log.Printf)
+	csvImporter := importer.NewCSVImporter(a.db.DB, a.geoSvc, a.log.Printf)
 	template := csvImporter.GetImportTemplate()
 	
 	// Set headers for CSV download
