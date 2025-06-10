@@ -1,0 +1,31 @@
+nom_commune;code_insee;code_departement;population;email;nom_contact;code_postal;latitude;longitude
+Aix-en-Provence;13001;13;145347;mairie@aixenprovence.fr;Jean Dupont;13100;43.5297;5.4474
+Marseille;13055;13;870018;contact@marseille.fr;Marie Martin;13001;43.2965;5.3698
+Nice;06088;06;342637;mairie@nice.fr;Pierre Durand;06000;43.7102;7.2620
+Toulouse;31555;31;479553;contact@toulouse.fr;Sophie Leroy;31000;43.6047;1.4442
+Lyon;69123;69;518635;mairie@lyon.fr;Michel Bernard;69000;45.7640;4.8357
+Nantes;44109;44;320732;contact@nantes.fr;Claire Moreau;44000;47.2184;-1.5536
+Strasbourg;67482;67;284677;mairie@strasbourg.fr;Antoine Petit;67000;48.5734;7.7521
+Montpellier;34172;34;295542;contact@montpellier.fr;Isabelle Roux;34000;43.6110;3.8767
+Bordeaux;33063;33;257068;mairie@bordeaux.fr;François Blanc;33000;44.8378;-0.5792
+Lille;59350;59;232787;contact@lille.fr;Catherine Garnier;59000;50.6292;3.0573
+Rennes;35238;35;217728;mairie@rennes.fr;Nicolas Fabre;35000;48.1173;-1.6778
+Reims;51454;51;182460;contact@reims.fr;Sylvie Mercier;51100;49.2583;4.0317
+Saint-Étienne;42218;42;171057;mairie@saint-etienne.fr;Laurent Girard;42000;45.4397;4.3872
+Le Havre;76351;76;170147;contact@lehavre.fr;Monique Rousseau;76600;49.4944;0.1079
+Toulon;83137;83;176198;mairie@toulon.fr;Alain Vincent;83000;43.1242;5.9280
+Grenoble;38185;38;158552;contact@grenoble.fr;Valérie Lefevre;38000;45.1885;5.7245
+Dijon;21231;21;156920;mairie@dijon.fr;Thierry Moreau;21000;47.3220;5.0415
+Angers;49007;49;154508;contact@angers.fr;Nathalie Fournier;49000;47.4784;-0.5632
+Nîmes;30189;30;148561;mairie@nimes.fr;Christophe Michel;30000;43.8367;4.3601
+Villeurbanne;69266;69;149019;contact@villeurbanne.fr;Sandrine Leroy;69100;45.7665;4.8795
+Saint-Denis;93066;93;112091;mairie@saint-denis93.fr;Éric Dubois;93200;48.9362;2.3574
+Le Mans;72181;72;143813;contact@lemans.fr;Patricia Clement;72000;48.0061;0.1996
+Aix-les-Bains;73008;73;30011;mairie@aixlesbains.fr;Jean-Claude Martin;73100;45.6886;5.9151
+Annecy;74010;74;128199;contact@annecy.fr;Marie-Pierre Durand;74000;45.8992;6.1294
+Brest;29019;29;139676;mairie@brest.fr;Philippe Roussel;29200;48.3905;-4.4860
+Limoges;87085;87;132175;contact@limoges.fr;Brigitte Moreau;87000;45.8336;1.2611
+Tours;37261;37;136463;mairie@tours.fr;Gérard Petit;37000;47.3941;0.6848
+Amiens;80021;80;133891;contact@amiens.fr;Corinne Blanc;80000;49.8941;2.2958
+Perpignan;66136;66;121934;mairie@perpignan.fr;Didier Garnier;66000;42.6886;2.8948
+Metz;57463;57;116429;contact@metz.fr;Françoise Fabre;57000;49.1193;6.1757

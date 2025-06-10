@@ -1,0 +1,171 @@
+# Makefile pour listmonk-mairies
+.PHONY: help build run stop clean logs test dev prod migrate import-sample
+
+# Variables
+COMPOSE_FILE = docker-compose.mairies.yml
+IMAGE_NAME = listmonk-mairies
+VERSION = v1.0.0
+
+# Couleurs pour l'affichage
+GREEN = \033[0;32m
+YELLOW = \033[1;33m
+RED = \033[0;31m
+NC = \033[0m # No Color
+
+help: ## Affiche cette aide
+	@echo "$(GREEN)Listmonk pour les Mairies Françaises$(NC)"
+	@echo "======================================"
+	@echo ""
+	@echo "Commandes disponibles :"
+	@echo ""
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(YELLOW)%-15s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo ""
+
+build: ## Construire l'image Docker
+	@echo "$(GREEN)🏗️  Construction de l'image Docker...$(NC)"
+	@docker build -f Dockerfile.mairies -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
+	@echo "$(GREEN)✅ Image construite avec succès !$(NC)"
+
+run: ## Lancer l'application en mode production
+	@echo "$(GREEN)🚀 Lancement en mode production...$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) up -d
+	@echo "$(GREEN)✅ Application démarrée !$(NC)"
+	@echo "🌐 Interface : http://localhost:9000"
+
+dev: ## Lancer l'application en mode développement
+	@echo "$(GREEN)🛠️  Lancement en mode développement...$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) --profile dev up -d
+	@echo "$(GREEN)✅ Application démarrée en mode dev !$(NC)"
+	@echo "🌐 Interface : http://localhost:9000"
+	@echo "🗄️  Adminer : http://localhost:8080"
+	@echo "🔴 Redis Commander : http://localhost:8081"
+
+stop: ## Arrêter l'application
+	@echo "$(YELLOW)⏹️  Arrêt de l'application...$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) down
+	@echo "$(GREEN)✅ Application arrêtée !$(NC)"
+
+restart: stop run ## Redémarrer l'application
+
+clean: ## Nettoyer les conteneurs et volumes
+	@echo "$(RED)🧹 Nettoyage des conteneurs et volumes...$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) down -v --remove-orphans
+	@docker system prune -f
+	@echo "$(GREEN)✅ Nettoyage terminé !$(NC)"
+
+logs: ## Afficher les logs de l'application
+	@docker-compose -f $(COMPOSE_FILE) logs -f app
+
+logs-db: ## Afficher les logs de la base de données
+	@docker-compose -f $(COMPOSE_FILE) logs -f db
+
+logs-redis: ## Afficher les logs de Redis
+	@docker-compose -f $(COMPOSE_FILE) logs -f redis
+
+logs-all: ## Afficher tous les logs
+	@docker-compose -f $(COMPOSE_FILE) logs -f
+
+status: ## Afficher le statut des services
+	@echo "$(GREEN)📊 Statut des services :$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) ps
+
+shell: ## Ouvrir un shell dans le conteneur de l'application
+	@docker-compose -f $(COMPOSE_FILE) exec app sh
+
+shell-db: ## Ouvrir un shell PostgreSQL
+	@docker-compose -f $(COMPOSE_FILE) exec db psql -U listmonk_mairies -d listmonk_mairies
+
+migrate: ## Exécuter les migrations de base de données
+	@echo "$(GREEN)🔄 Exécution des migrations...$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) exec app ./listmonk --upgrade --yes
+	@echo "$(GREEN)✅ Migrations terminées !$(NC)"
+
+backup-db: ## Sauvegarder la base de données
+	@echo "$(GREEN)💾 Sauvegarde de la base de données...$(NC)"
+	@mkdir -p backups
+	@docker-compose -f $(COMPOSE_FILE) exec -T db pg_dump -U listmonk_mairies listmonk_mairies > backups/backup_$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "$(GREEN)✅ Sauvegarde créée dans le dossier backups/$(NC)"
+
+restore-db: ## Restaurer la base de données (usage: make restore-db FILE=backup.sql)
+	@if [ -z "$(FILE)" ]; then echo "$(RED)❌ Veuillez spécifier le fichier : make restore-db FILE=backup.sql$(NC)"; exit 1; fi
+	@echo "$(YELLOW)⚠️  Restauration de la base de données depuis $(FILE)...$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) exec -T db psql -U listmonk_mairies -d listmonk_mairies < $(FILE)
+	@echo "$(GREEN)✅ Restauration terminée !$(NC)"
+
+import-sample: ## Importer les données d'exemple
+	@echo "$(GREEN)📥 Import des données d'exemple...$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) exec -T db psql -U listmonk_mairies -d listmonk_mairies < scripts/sample-data.sql
+	@echo "$(GREEN)✅ Données d'exemple importées !$(NC)"
+
+test-csv: ## Tester l'import CSV avec le fichier d'exemple
+	@echo "$(GREEN)🧪 Test d'import CSV...$(NC)"
+	@curl -X POST http://localhost:9000/api/geo/import \
+		-H "Authorization: Bearer YOUR_TOKEN" \
+		-F "file=@examples/mairies-sample.csv" \
+		-F "create_subscribers=true"
+
+health: ## Vérifier la santé de l'application
+	@echo "$(GREEN)🏥 Vérification de la santé des services...$(NC)"
+	@curl -f http://localhost:9000/api/health || echo "$(RED)❌ Application non accessible$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) exec db pg_isready -U listmonk_mairies || echo "$(RED)❌ Base de données non accessible$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) exec redis redis-cli ping || echo "$(RED)❌ Redis non accessible$(NC)"
+
+update: ## Mettre à jour l'application
+	@echo "$(GREEN)🔄 Mise à jour de l'application...$(NC)"
+	@git pull origin main
+	@make build
+	@make stop
+	@make run
+	@echo "$(GREEN)✅ Mise à jour terminée !$(NC)"
+
+setup: ## Configuration initiale complète
+	@echo "$(GREEN)🎯 Configuration initiale de listmonk-mairies...$(NC)"
+	@if [ ! -f .env ]; then cp .env.example .env; echo "$(YELLOW)⚠️  Fichier .env créé. Veuillez le configurer avant de continuer.$(NC)"; exit 1; fi
+	@make build
+	@make run
+	@sleep 10
+	@make import-sample
+	@echo "$(GREEN)✅ Configuration terminée !$(NC)"
+	@echo "🌐 Accédez à http://localhost:9000 pour commencer"
+
+install: setup ## Alias pour setup
+
+# Commandes de développement
+dev-frontend: ## Développement frontend uniquement
+	@echo "$(GREEN)🎨 Lancement du développement frontend...$(NC)"
+	@cd frontend && yarn install && yarn dev
+
+dev-backend: ## Développement backend uniquement
+	@echo "$(GREEN)⚙️  Lancement du développement backend...$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) up -d db redis
+	@echo "Backend dependencies started. Run 'go run ./cmd' to start the application."
+
+# Commandes de monitoring
+monitor: ## Surveiller les ressources
+	@echo "$(GREEN)📊 Surveillance des ressources...$(NC)"
+	@docker stats $(shell docker-compose -f $(COMPOSE_FILE) ps -q)
+
+# Commandes de sécurité
+security-scan: ## Scanner les vulnérabilités de sécurité
+	@echo "$(GREEN)🔒 Scan de sécurité...$(NC)"
+	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(PWD):/src aquasec/trivy image $(IMAGE_NAME):latest
+
+# Commandes de documentation
+docs: ## Générer la documentation
+	@echo "$(GREEN)📚 Génération de la documentation...$(NC)"
+	@echo "Documentation disponible dans README-MAIRIES.md"
+
+# Informations système
+info: ## Afficher les informations système
+	@echo "$(GREEN)ℹ️  Informations système :$(NC)"
+	@echo "Docker version: $(shell docker --version)"
+	@echo "Docker Compose version: $(shell docker-compose --version)"
+	@echo "Image: $(IMAGE_NAME):$(VERSION)"
+	@echo "Compose file: $(COMPOSE_FILE)"
+	@echo ""
+	@echo "$(GREEN)📁 Structure des volumes :$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) config --volumes
+	@echo ""
+	@echo "$(GREEN)🌐 Ports exposés :$(NC)"
+	@docker-compose -f $(COMPOSE_FILE) config --services | xargs -I {} docker-compose -f $(COMPOSE_FILE) port {} 2>/dev/null || true

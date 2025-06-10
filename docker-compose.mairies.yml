@@ -1,0 +1,184 @@
+version: '3.8'
+
+x-db-credentials: &db-credentials
+  POSTGRES_USER: &db-user listmonk_mairies
+  POSTGRES_PASSWORD: &db-password listmonk_mairies_2024
+  POSTGRES_DB: &db-name listmonk_mairies
+
+services:
+  # Listmonk application for French municipalities
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.mairies
+    container_name: listmonk_mairies_app
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    networks:
+      - listmonk_mairies
+    hostname: listmonk-mairies.local
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: [sh, -c, "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''"]
+    environment:
+      # Application settings
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_app__admin_username: ${LISTMONK_ADMIN_USER:-admin}
+      LISTMONK_app__admin_password: ${LISTMONK_ADMIN_PASSWORD:-changeme}
+      
+      # Database settings
+      LISTMONK_db__user: *db-user
+      LISTMONK_db__password: *db-password
+      LISTMONK_db__database: *db-name
+      LISTMONK_db__host: listmonk_mairies_db
+      LISTMONK_db__port: 5432
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_db__max_open: 25
+      LISTMONK_db__max_idle: 25
+      LISTMONK_db__max_lifetime: 300s
+      
+      # Redis settings for caching
+      LISTMONK_redis__host: listmonk_mairies_redis
+      LISTMONK_redis__port: 6379
+      LISTMONK_redis__password: ""
+      LISTMONK_redis__db: 0
+      
+      # Timezone
+      TZ: Europe/Paris
+      
+      # Admin user (optional, for first setup)
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:-}
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASSWORD:-}
+      
+      # Geographic features
+      LISTMONK_geo__enabled: true
+      LISTMONK_geo__cache_ttl: 3600
+      
+    volumes:
+      - ./uploads:/listmonk/uploads:rw
+      - ./data:/listmonk/data:rw
+      - ./imports:/listmonk/imports:rw
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.listmonk-mairies.rule=Host(`listmonk-mairies.local`)"
+      - "traefik.http.services.listmonk-mairies.loadbalancer.server.port=9000"
+
+  # PostgreSQL database with geographic extensions
+  db:
+    image: postgis/postgis:17-3.5-alpine
+    container_name: listmonk_mairies_db
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - listmonk_mairies
+    environment:
+      <<: *db-credentials
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=fr_FR.UTF-8"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U listmonk_mairies"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/v5.1.0_geo_tables.sql:/docker-entrypoint-initdb.d/01-geo-tables.sql:ro
+      - ./scripts/sample-data.sql:/docker-entrypoint-initdb.d/02-sample-data.sql:ro
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+
+  # Redis for caching geographic queries
+  redis:
+    image: redis:7-alpine
+    container_name: listmonk_mairies_redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - listmonk_mairies
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Adminer for database management (optional, for development)
+  adminer:
+    image: adminer:latest
+    container_name: listmonk_mairies_adminer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - listmonk_mairies
+    environment:
+      ADMINER_DEFAULT_SERVER: listmonk_mairies_db
+      ADMINER_DESIGN: pepa-linha
+    profiles:
+      - dev
+
+  # Redis Commander for Redis management (optional, for development)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: listmonk_mairies_redis_commander
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8081"
+    networks:
+      - listmonk_mairies
+    environment:
+      REDIS_HOSTS: local:listmonk_mairies_redis:6379
+    profiles:
+      - dev
+
+networks:
+  listmonk_mairies:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# Configuration for production deployment
+x-production-overrides: &production-overrides
+  deploy:
+    resources:
+      limits:
+        cpus: '2.0'
+        memory: 2G
+      reservations:
+        cpus: '0.5'
+        memory: 512M
+    restart_policy:
+      condition: on-failure
+      delay: 5s
+      max_attempts: 3
+      window: 120s
