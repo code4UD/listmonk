@@ -1,5 +1,3 @@
-version: '3.8'
-
 x-db-credentials: &db-credentials
   POSTGRES_USER: &db-user listmonk_mairies
   POSTGRES_PASSWORD: &db-password listmonk_mairies_2024
@@ -160,7 +158,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.25.0.0/16
 
 volumes:
   postgres_data:
