@@ -23,7 +23,7 @@
       <div class="column is-8">
         <div class="box">
           <h2 class="title is-5">{{ $t('mairies.import.uploadFile') }}</h2>
-          
+
           <b-field>
             <b-upload
               v-model="csvFile"
@@ -35,7 +35,7 @@
               <section class="section">
                 <div class="content has-text-centered">
                   <p>
-                    <b-icon icon="upload" size="is-large"></b-icon>
+                    <b-icon icon="upload" size="is-large" />
                   </p>
                   <p>{{ $t('mairies.import.dragDrop') }}</p>
                   <p class="has-text-grey">{{ $t('mairies.import.csvOnly') }}</p>
@@ -135,7 +135,7 @@
               :max="100"
               type="is-primary"
               show-value
-            ></b-progress>
+            />
             <p v-if="importStatus" class="has-text-grey">{{ importStatus }}</p>
           </div>
         </section>
@@ -145,11 +145,11 @@
 </template>
 
 <script>
-import { mapState } from 'vuex'
+import { mapState } from 'vuex';
 
 export default {
   name: 'MairiesImport',
-  
+
   data() {
     return {
       csvFile: null,
@@ -161,152 +161,151 @@ export default {
       importing: false,
       showProgress: false,
       importProgress: 0,
-      importStatus: ''
-    }
+      importStatus: '',
+    };
   },
 
   computed: {
-    ...mapState(['loading'])
+    ...mapState(['loading']),
   },
 
   mounted() {
-    this.getImportStats()
+    this.getImportStats();
   },
 
   methods: {
     async downloadTemplate() {
-      this.downloading = true
+      this.downloading = true;
       try {
-        const response = await this.$api.getCSVTemplate()
-        const blob = new Blob([response.data], { type: 'text/csv' })
-        const url = window.URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = 'mairies-template.csv'
-        link.click()
-        window.URL.revokeObjectURL(url)
+        const response = await this.$api.getCSVTemplate();
+        const blob = new Blob([response.data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'mairies-template.csv';
+        link.click();
+        window.URL.revokeObjectURL(url);
       } catch (e) {
         this.$buefy.toast.open({
           message: this.$t('mairies.import.downloadError'),
-          type: 'is-danger'
-        })
+          type: 'is-danger',
+        });
       } finally {
-        this.downloading = false
+        this.downloading = false;
       }
     },
 
     onFileSelect() {
-      this.validationResult = null
+      this.validationResult = null;
     },
 
     async validateFile() {
-      if (!this.csvFile) return
+      if (!this.csvFile) return;
 
-      this.validating = true
+      this.validating = true;
       try {
-        const formData = new FormData()
-        formData.append('file', this.csvFile)
-        
-        const response = await this.$api.validateCSV(formData)
-        this.validationResult = response.data
-        
+        const formData = new FormData();
+        formData.append('file', this.csvFile);
+
+        const response = await this.$api.validateCSV(formData);
+        this.validationResult = response.data;
+
         if (this.validationResult.valid) {
           this.$buefy.toast.open({
             message: this.$t('mairies.import.validationSuccess'),
-            type: 'is-success'
-          })
+            type: 'is-success',
+          });
         } else {
           this.$buefy.toast.open({
             message: this.$t('mairies.import.validationWarning'),
-            type: 'is-warning'
-          })
+            type: 'is-warning',
+          });
         }
       } catch (e) {
         this.$buefy.toast.open({
           message: this.$t('mairies.import.validationError'),
-          type: 'is-danger'
-        })
+          type: 'is-danger',
+        });
       } finally {
-        this.validating = false
+        this.validating = false;
       }
     },
 
     async importFile() {
-      if (!this.csvFile || !this.validationResult?.valid) return
+      if (!this.csvFile || !this.validationResult?.valid) return;
 
-      this.importing = true
-      this.showProgress = true
-      this.importProgress = 0
-      this.importStatus = this.$t('mairies.import.starting')
+      this.importing = true;
+      this.showProgress = true;
+      this.importProgress = 0;
+      this.importStatus = this.$t('mairies.import.starting');
 
       try {
-        const formData = new FormData()
-        formData.append('file', this.csvFile)
-        
+        const formData = new FormData();
+        formData.append('file', this.csvFile);
+
         // Simulate progress updates
         const progressInterval = setInterval(() => {
           if (this.importProgress < 90) {
-            this.importProgress += Math.random() * 10
-            this.importStatus = this.$t('mairies.import.processing', { 
-              progress: Math.round(this.importProgress) 
-            })
+            this.importProgress += Math.random() * 10;
+            this.importStatus = this.$t('mairies.import.processing', {
+              progress: Math.round(this.importProgress),
+            });
           }
-        }, 500)
+        }, 500);
 
-        const response = await this.$api.importMairies(formData)
-        
-        clearInterval(progressInterval)
-        this.importProgress = 100
-        this.importStatus = this.$t('mairies.import.completed')
-        
+        const response = await this.$api.importMairies(formData);
+
+        clearInterval(progressInterval);
+        this.importProgress = 100;
+        this.importStatus = this.$t('mairies.import.completed');
+
         setTimeout(() => {
-          this.showProgress = false
-          this.importStats = response.data
-          this.csvFile = null
-          this.validationResult = null
-          
+          this.showProgress = false;
+          this.importStats = response.data;
+          this.csvFile = null;
+          this.validationResult = null;
+
           this.$buefy.toast.open({
-            message: this.$t('mairies.import.importSuccess', { 
-              count: response.data.imported 
+            message: this.$t('mairies.import.importSuccess', {
+              count: response.data.imported,
             }),
             type: 'is-success',
-            duration: 5000
-          })
-        }, 1000)
-        
+            duration: 5000,
+          });
+        }, 1000);
       } catch (e) {
-        this.showProgress = false
+        this.showProgress = false;
         this.$buefy.toast.open({
           message: this.$t('mairies.import.importError'),
-          type: 'is-danger'
-        })
+          type: 'is-danger',
+        });
       } finally {
-        this.importing = false
+        this.importing = false;
       }
     },
 
     async getImportStats() {
       try {
-        const response = await this.$api.getImportStats()
-        this.importStats = response.data
+        const response = await this.$api.getImportStats();
+        this.importStats = response.data;
       } catch (e) {
         // Ignore error if no previous import
       }
     },
 
     formatFileSize(bytes) {
-      if (bytes === 0) return '0 Bytes'
-      const k = 1024
-      const sizes = ['Bytes', 'KB', 'MB', 'GB']
-      const i = Math.floor(Math.log(bytes) / Math.log(k))
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
     },
 
     formatDate(dateString) {
-      return new Date(dateString).toLocaleString()
-    }
-  }
-}
+      return new Date(dateString).toLocaleString();
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -317,13 +316,13 @@ export default {
       border: 2px dashed #dbdbdb;
       border-radius: 6px;
       transition: border-color 0.3s;
-      
+
       &:hover {
         border-color: #3273dc;
       }
     }
   }
-  
+
   .notification {
     margin-top: 1rem;
   }

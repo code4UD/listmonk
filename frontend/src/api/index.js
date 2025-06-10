@@ -557,18 +557,18 @@ export const getCSVTemplate = () => http.get(
 export const validateCSV = (formData) => http.post(
   '/api/geo/validate-csv',
   formData,
-  { 
+  {
     headers: { 'Content-Type': 'multipart/form-data' },
-    loading: models.import 
+    loading: models.import,
   },
 );
 
 export const importMairies = (formData) => http.post(
   '/api/geo/import',
   formData,
-  { 
+  {
     headers: { 'Content-Type': 'multipart/form-data' },
-    loading: models.import 
+    loading: models.import,
   },
 );
 

@@ -31,6 +31,7 @@
     "indent.js": "^0.3.5",
     "js-beautify": "^1.15.1",
     "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "prismjs": "^1.30.0",
     "qs": "^6.10.1",
     "textversionjs": "^1.1.3",

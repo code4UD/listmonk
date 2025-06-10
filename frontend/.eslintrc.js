@@ -18,6 +18,7 @@ module.exports = {
     'vue/quote-props': 'off',
     'vue/first-attribute-linebreak': 'off',
     'vue/no-child-content': 'off',
+    'import/no-unresolved': 'off',
     'vue/max-attributes-per-line': 'off',
     'vue/html-indent': 'off',
     'vue/html-closing-bracket-newline': 'off',

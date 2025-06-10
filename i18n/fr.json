@@ -725,5 +725,11 @@
     "mairies.targeting.searchSuccess": "{count} mairies trouvées",
     "mairies.targeting.searchError": "Erreur lors de la recherche",
     "mairies.targeting.exportSuccess": "Export réalisé avec succès",
-    "mairies.targeting.exportError": "Erreur lors de l'export"
+    "mairies.targeting.exportError": "Erreur lors de l'export",
+    "mairies.targeting.mapView": "Vue cartographique",
+    "mairies.targeting.showMap": "Afficher la carte",
+    "mairies.targeting.hideMap": "Masquer la carte",
+    "mairies.targeting.actions": "Actions",
+    "mairies.targeting.createCampaign": "Créer une campagne",
+    "mairies.targeting.noResults": "Aucun résultat trouvé"
 }
