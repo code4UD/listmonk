@@ -86,8 +86,7 @@ services:
       start_period: 30s
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations/v5.1.0_geo_tables.sql:/docker-entrypoint-initdb.d/01-geo-tables.sql:ro
-      - ./scripts/sample-data.sql:/docker-entrypoint-initdb.d/02-sample-data.sql:ro
+      - ./scripts/init-mairies.sql:/docker-entrypoint-initdb.d/01-init-mairies.sql:ro
     command: >
       postgres
       -c shared_preload_libraries=pg_stat_statements

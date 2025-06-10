@@ -1,5 +1,13 @@
--- Migration v5.1.0: Ajout des tables géographiques pour les mairies françaises
+-- Script pour corriger la migration et créer les bonnes tables
 
+-- Supprimer les anciennes tables si elles existent
+DROP TABLE IF EXISTS subscriber_communes CASCADE;
+DROP TABLE IF EXISTS french_communes CASCADE;
+DROP TABLE IF EXISTS french_departments CASCADE;
+DROP VIEW IF EXISTS targeting_view CASCADE;
+DROP FUNCTION IF EXISTS count_targeting_recipients CASCADE;
+
+-- Créer les nouvelles tables avec les bons noms
 -- Table pour les départements français
 CREATE TABLE IF NOT EXISTS departments (
     id SERIAL PRIMARY KEY,
@@ -153,6 +161,20 @@ INSERT INTO departments (code, name, region) VALUES
 ('977', 'Saint-Barthélemy', 'Saint-Barthélemy'),
 ('978', 'Saint-Martin', 'Saint-Martin')
 ON CONFLICT (code) DO NOTHING;
+
+-- Ajout de quelques mairies de test
+INSERT INTO mairies (name, email, department_code, population) VALUES
+('Mairie de Paris', 'contact@paris.fr', '75', 2161000),
+('Mairie de Marseille', 'contact@marseille.fr', '13', 870000),
+('Mairie de Lyon', 'contact@lyon.fr', '69', 515000),
+('Mairie de Toulouse', 'contact@toulouse.fr', '31', 479000),
+('Mairie de Nice', 'contact@nice.fr', '06', 342000),
+('Mairie de Nantes', 'contact@nantes.fr', '44', 309000),
+('Mairie de Montpellier', 'contact@montpellier.fr', '34', 285000),
+('Mairie de Strasbourg', 'contact@strasbourg.fr', '67', 280000),
+('Mairie de Bordeaux', 'contact@bordeaux.fr', '33', 254000),
+('Mairie de Lille', 'contact@lille.fr', '59', 232000)
+ON CONFLICT DO NOTHING;
 
 -- Ajout d'une vue pour faciliter les requêtes de ciblage
 CREATE OR REPLACE VIEW targeting_view AS
