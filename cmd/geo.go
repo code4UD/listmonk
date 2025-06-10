@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/knadh/listmonk/internal/geo"
 	"github.com/knadh/listmonk/internal/importer"
@@ -292,17 +292,13 @@ func (a *App) GetCSVTemplate(c echo.Context) error {
 	c.Response().Header().Set("Content-Type", "text/csv")
 	c.Response().Header().Set("Content-Disposition", "attachment; filename=template_mairies.csv")
 	
-	writer := csv.NewWriter(c.Response())
-	writer.Comma = ';'
-	
-	for _, record := range template {
-		if err := writer.Write(record); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, 
-				fmt.Sprintf("Error writing CSV: %v", err))
-		}
+	// Write template directly as string
+	_, err := c.Response().Write([]byte(template))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, 
+			fmt.Sprintf("Error writing CSV: %v", err))
 	}
 	
-	writer.Flush()
 	return nil
 }
 
@@ -322,4 +318,235 @@ func parseStringArray(s string) []string {
 	}
 	
 	return result
+}
+
+// SearchMairies searches for mairies based on filters.
+func (a *App) SearchMairies(c echo.Context) error {
+	var (
+		populationMin = c.QueryParam("populationMin")
+		populationMax = c.QueryParam("populationMax")
+		departments   = c.QueryParam("departments")
+		page          = c.QueryParam("page")
+		limit         = c.QueryParam("limit")
+	)
+
+	// Default pagination
+	if page == "" {
+		page = "1"
+	}
+	if limit == "" {
+		limit = "20"
+	}
+
+	// Build query
+	query := `SELECT id, nom_commune, code_insee, code_departement, population, 
+	                 email, nom_contact, code_postal, latitude, longitude,
+	                 COUNT(*) OVER() as total_count
+	          FROM mairies WHERE 1=1`
+	args := []interface{}{}
+	argIndex := 1
+
+	if populationMin != "" {
+		query += fmt.Sprintf(" AND population >= $%d", argIndex)
+		args = append(args, populationMin)
+		argIndex++
+	}
+
+	if populationMax != "" {
+		query += fmt.Sprintf(" AND population <= $%d", argIndex)
+		args = append(args, populationMax)
+		argIndex++
+	}
+
+	if departments != "" {
+		depts := strings.Split(departments, ",")
+		placeholders := make([]string, len(depts))
+		for i, dept := range depts {
+			placeholders[i] = fmt.Sprintf("$%d", argIndex)
+			args = append(args, strings.TrimSpace(dept))
+			argIndex++
+		}
+		query += fmt.Sprintf(" AND code_departement IN (%s)", strings.Join(placeholders, ","))
+	}
+
+	// Add pagination
+	pageInt, _ := strconv.Atoi(page)
+	limitInt, _ := strconv.Atoi(limit)
+	offset := (pageInt - 1) * limitInt
+	query += fmt.Sprintf(" ORDER BY nom_commune LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	args = append(args, limitInt, offset)
+
+	rows, err := a.db.Query(query, args...)
+	if err != nil {
+		a.log.Printf("error searching mairies: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Database error")
+	}
+	defer rows.Close()
+
+	var mairies []map[string]interface{}
+	var totalCount int
+
+	for rows.Next() {
+		var m struct {
+			ID              int     `json:"id"`
+			NomCommune      string  `json:"nom_commune"`
+			CodeInsee       string  `json:"code_insee"`
+			CodeDepartement string  `json:"code_departement"`
+			Population      int     `json:"population"`
+			Email           string  `json:"email"`
+			NomContact      string  `json:"nom_contact"`
+			CodePostal      string  `json:"code_postal"`
+			Latitude        float64 `json:"latitude"`
+			Longitude       float64 `json:"longitude"`
+			TotalCount      int     `json:"-"`
+		}
+
+		err := rows.Scan(&m.ID, &m.NomCommune, &m.CodeInsee, &m.CodeDepartement,
+			&m.Population, &m.Email, &m.NomContact, &m.CodePostal,
+			&m.Latitude, &m.Longitude, &m.TotalCount)
+		if err != nil {
+			continue
+		}
+
+		totalCount = m.TotalCount
+		mairies = append(mairies, map[string]interface{}{
+			"id":               m.ID,
+			"nom_commune":      m.NomCommune,
+			"code_insee":       m.CodeInsee,
+			"code_departement": m.CodeDepartement,
+			"population":       m.Population,
+			"email":            m.Email,
+			"nom_contact":      m.NomContact,
+			"code_postal":      m.CodePostal,
+			"latitude":         m.Latitude,
+			"longitude":        m.Longitude,
+		})
+	}
+
+	// Calculate statistics
+	stats := map[string]interface{}{
+		"byPopulation": map[string]int{
+			"small":  0,
+			"medium": 0,
+			"large":  0,
+		},
+		"byDepartment": []map[string]interface{}{},
+	}
+
+	// Count by population ranges
+	for _, mairie := range mairies {
+		pop := mairie["population"].(int)
+		if pop < 1000 {
+			stats["byPopulation"].(map[string]int)["small"]++
+		} else if pop <= 20000 {
+			stats["byPopulation"].(map[string]int)["medium"]++
+		} else {
+			stats["byPopulation"].(map[string]int)["large"]++
+		}
+	}
+
+	result := map[string]interface{}{
+		"mairies":         mairies,
+		"total":           totalCount,
+		"totalPopulation": 0, // Calculate if needed
+		"statistics":      stats,
+	}
+
+	return c.JSON(http.StatusOK, okResp{result})
+}
+
+// ExportMairies exports search results as CSV.
+func (a *App) ExportMairies(c echo.Context) error {
+	// Use same search logic as SearchMairies but without pagination
+	var (
+		populationMin = c.QueryParam("populationMin")
+		populationMax = c.QueryParam("populationMax")
+		departments   = c.QueryParam("departments")
+	)
+
+	query := `SELECT nom_commune, code_insee, code_departement, population, 
+	                 email, nom_contact, code_postal, latitude, longitude
+	          FROM mairies WHERE 1=1`
+	args := []interface{}{}
+	argIndex := 1
+
+	if populationMin != "" {
+		query += fmt.Sprintf(" AND population >= $%d", argIndex)
+		args = append(args, populationMin)
+		argIndex++
+	}
+
+	if populationMax != "" {
+		query += fmt.Sprintf(" AND population <= $%d", argIndex)
+		args = append(args, populationMax)
+		argIndex++
+	}
+
+	if departments != "" {
+		depts := strings.Split(departments, ",")
+		placeholders := make([]string, len(depts))
+		for i, dept := range depts {
+			placeholders[i] = fmt.Sprintf("$%d", argIndex)
+			args = append(args, strings.TrimSpace(dept))
+			argIndex++
+		}
+		query += fmt.Sprintf(" AND code_departement IN (%s)", strings.Join(placeholders, ","))
+	}
+
+	query += " ORDER BY nom_commune"
+
+	rows, err := a.db.Query(query, args...)
+	if err != nil {
+		a.log.Printf("error exporting mairies: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Database error")
+	}
+	defer rows.Close()
+
+	// Build CSV
+	var csvData strings.Builder
+	csvData.WriteString("nom_commune,code_insee,code_departement,population,email,nom_contact,code_postal,latitude,longitude\n")
+
+	for rows.Next() {
+		var nom, insee, dept, email, contact, postal string
+		var population int
+		var lat, lng float64
+
+		err := rows.Scan(&nom, &insee, &dept, &population, &email, &contact, &postal, &lat, &lng)
+		if err != nil {
+			continue
+		}
+
+		csvData.WriteString(fmt.Sprintf("%q,%q,%q,%d,%q,%q,%q,%.6f,%.6f\n",
+			nom, insee, dept, population, email, contact, postal, lat, lng))
+	}
+
+	c.Response().Header().Set("Content-Type", "text/csv")
+	c.Response().Header().Set("Content-Disposition", "attachment; filename=mairies-export.csv")
+	return c.String(http.StatusOK, csvData.String())
+}
+
+// GetImportStats returns statistics about the last import.
+func (a *App) GetImportStats(c echo.Context) error {
+	// Query import statistics from a log table or calculate from current data
+	var stats struct {
+		Date     string `json:"date"`
+		Imported int    `json:"imported"`
+		Updated  int    `json:"updated"`
+		Errors   int    `json:"errors"`
+	}
+
+	// For now, return basic stats from the mairies table
+	var count int
+	err := a.db.QueryRow("SELECT COUNT(*) FROM mairies").Scan(&count)
+	if err != nil {
+		a.log.Printf("error getting import stats: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Database error")
+	}
+
+	stats.Date = time.Now().Format("2006-01-02 15:04:05")
+	stats.Imported = count
+	stats.Updated = 0
+	stats.Errors = 0
+
+	return c.JSON(http.StatusOK, okResp{stats})
 }

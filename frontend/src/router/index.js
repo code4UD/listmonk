@@ -137,6 +137,18 @@ const routes = [
     meta: { title: 'maintenance.title', group: 'settings' },
     component: () => import('../views/Maintenance.vue'),
   },
+  {
+    path: '/mairies/import',
+    name: 'mairiesImport',
+    meta: { title: 'mairies.import.title', group: 'mairies' },
+    component: () => import('../views/MairiesImport.vue'),
+  },
+  {
+    path: '/mairies/targeting',
+    name: 'mairiesTargeting',
+    meta: { title: 'mairies.targeting.title', group: 'mairies' },
+    component: () => import('../views/MairiesTargeting.vue'),
+  },
 ];
 
 const router = new VueRouter({

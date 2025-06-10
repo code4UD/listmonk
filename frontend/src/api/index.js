@@ -532,3 +532,47 @@ export const deleteRole = (id) => http.delete(
   `/api/roles/${id}`,
   { loading: models.userRoles },
 );
+
+// Mairies API endpoints
+export const getDepartments = (params = {}) => http.get(
+  '/api/geo/departments',
+  { params, loading: models.departments },
+);
+
+export const searchMairies = (params = {}) => http.get(
+  '/api/geo/search',
+  { params, loading: models.mairies },
+);
+
+export const exportMairies = (params = {}) => http.get(
+  '/api/geo/export',
+  { params, responseType: 'blob' },
+);
+
+export const getCSVTemplate = () => http.get(
+  '/api/geo/csv-template',
+  { responseType: 'blob' },
+);
+
+export const validateCSV = (formData) => http.post(
+  '/api/geo/validate-csv',
+  formData,
+  { 
+    headers: { 'Content-Type': 'multipart/form-data' },
+    loading: models.import 
+  },
+);
+
+export const importMairies = (formData) => http.post(
+  '/api/geo/import',
+  formData,
+  { 
+    headers: { 'Content-Type': 'multipart/form-data' },
+    loading: models.import 
+  },
+);
+
+export const getImportStats = () => http.get(
+  '/api/geo/import-stats',
+  { loading: models.import },
+);

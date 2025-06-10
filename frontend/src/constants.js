@@ -20,6 +20,10 @@ export const models = Object.freeze({
   settings: 'settings',
   logs: 'logs',
   maintenance: 'maintenance',
+  // Mairies models
+  departments: 'departments',
+  mairies: 'mairies',
+  import: 'import',
 });
 
 // Ad-hoc URIs that are used outside of vuex requests.

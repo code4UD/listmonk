@@ -53,6 +53,15 @@
         data-cy="listRoles" icon="format-list-bulleted-square" :label="$t('users.listRoles')" />
     </b-menu-item><!-- users -->
 
+    <b-menu-item :expanded="activeGroup.mairies" :active="activeGroup.mairies"
+      data-cy="mairies" @update:active="(state) => toggleGroup('mairies', state)" icon="map-marker-multiple"
+      label="Mairies">
+      <b-menu-item :to="{ name: 'mairiesImport' }" tag="router-link" :active="activeItem.mairiesImport"
+        data-cy="mairies-import" icon="file-upload-outline" :label="$t('mairies.import.title')" />
+      <b-menu-item :to="{ name: 'mairiesTargeting' }" tag="router-link" :active="activeItem.mairiesTargeting"
+        data-cy="mairies-targeting" icon="map-search-outline" :label="$t('mairies.targeting.title')" />
+    </b-menu-item><!-- mairies -->
+
     <b-menu-item v-if="$can('settings:*')" :expanded="activeGroup.settings" :active="activeGroup.settings"
       data-cy="settings" @update:active="(state) => toggleGroup('settings', state)" icon="cog-outline"
       :label="$t('menu.settings')">

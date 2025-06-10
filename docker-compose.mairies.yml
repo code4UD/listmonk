@@ -15,6 +15,7 @@ services:
     restart: unless-stopped
     ports:
       - "9000:9000"
+      - "12000:9000"
     networks:
       - listmonk_mairies
     hostname: listmonk-mairies.local
@@ -23,7 +24,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    command: [sh, -c, "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''"]
+    command: [sh, -c, "./listmonk --install --idempotent --yes --config '' --static-dir=/listmonk/static --i18n-dir=/listmonk/i18n && ./listmonk --upgrade --yes --config '' --static-dir=/listmonk/static --i18n-dir=/listmonk/i18n && ./listmonk --config '' --static-dir=/listmonk/static --i18n-dir=/listmonk/i18n"]
     environment:
       # Application settings
       LISTMONK_app__address: 0.0.0.0:9000

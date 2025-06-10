@@ -191,16 +191,14 @@ func initHTTPHandlers(e *echo.Echo, a *App) {
 		g.DELETE("/api/users/:id", pm(hasID(a.DeleteUser), "users:manage"))
 		g.POST("/api/logout", a.Logout)
 
-		// Geographic and targeting endpoints
+		// Geographic and targeting endpoints for French municipalities
 		g.GET("/api/geo/departments", pm(a.GetDepartments, "subscribers:get"))
-		g.GET("/api/geo/communes", pm(a.GetCommunes, "subscribers:get"))
-		g.GET("/api/geo/communes/search", pm(a.SearchCommunes, "subscribers:get"))
-		g.GET("/api/geo/stats", pm(a.GetGeoStats, "subscribers:get"))
-		g.POST("/api/targeting/preview", pm(a.TargetingPreview, "campaigns:get"))
-		g.POST("/api/targeting/count", pm(a.TargetingCount, "campaigns:get"))
+		g.GET("/api/geo/search", pm(a.SearchMairies, "subscribers:get"))
+		g.GET("/api/geo/export", pm(a.ExportMairies, "subscribers:get"))
+		g.GET("/api/geo/csv-template", pm(a.GetCSVTemplate, "subscribers:manage"))
+		g.POST("/api/geo/validate-csv", pm(a.ValidateCSV, "subscribers:manage"))
 		g.POST("/api/geo/import", pm(a.ImportMairies, "subscribers:manage"))
-		g.POST("/api/geo/validate", pm(a.ValidateCSV, "subscribers:manage"))
-		g.GET("/api/geo/template", pm(a.GetCSVTemplate, "subscribers:manage"))
+		g.GET("/api/geo/import-stats", pm(a.GetImportStats, "subscribers:get"))
 		g.GET("/api/subscribers/:id/communes", pm(hasID(a.GetSubscriberCommunes), "subscribers:get"))
 		g.POST("/api/subscribers/:id/communes", pm(hasID(a.AssociateSubscriberCommune), "subscribers:manage"))
 		g.DELETE("/api/subscribers/:id/communes/:commune_id", pm(hasID(a.RemoveSubscriberCommune), "subscribers:manage"))
